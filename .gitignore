@@ -1,0 +1,21 @@
+# Local notes
+CLAUDE.md
+claude.md
+
+# Tests
+tests/
+
+# Raw/processed documents
+data/raw/
+data/processed/
+
+# Generated audit report
+data/index/chunk_audit_report.txt
+
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo

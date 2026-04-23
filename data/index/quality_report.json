@@ -1,0 +1,457 @@
+{
+  "total_chunks": 954,
+  "warnings": 75,
+  "errors": 0,
+  "issues": [
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c0-d560709ba772",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (47)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c2-b979b17a871f",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (21)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c7-895809a52e9d",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (39)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c8-c44921368ef0",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (31)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c9-a33bb59f5916",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (64)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c18-aa871061f9fb",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (22)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c24-bb2543eff73b",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (28)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c29-8bb32b68a91e",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (37)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c38-8c5452a36f0e",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (38)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c39-eb4c2a4fcc96",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (34)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c40-acb0277ec423",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (42)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c41-d408dc316303",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (56)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c42-e842e18bd6b1",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (72)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c43-faab6522dcec",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (30)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c44-aaa32ece2e20",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (36)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c45-ec948d5ef0e4",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (28)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c46-63a5be51c56c",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (50)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c51-07a4ab4f4379",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (42)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c52-7fefa91ed324",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (50)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c53-a3e782b08ef2",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (60)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c54-ca981c691b02",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (69)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c56-b5b68218d943",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (36)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c57-4804bf673a94",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (54)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c60-6098a35056c1",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (40)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c61-17bbd5090487",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (48)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c66-dddb4d8a440d",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (48)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c67-6be41c08f97d",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (58)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c69-a6c78b044ba7",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (64)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c70-9778b4dabeaf",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (73)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c71-4cc24e8cacbb",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (54)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c72-a71ada828987",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (53)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c73-bbf4b912e5a5",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (56)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c74-696ec0a4dd34",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (70)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c77-be6967887a47",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (57)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c78-e008dc4aa6f8",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (50)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c79-e12d959becd0",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (52)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c83-d51cd7dfdfe9",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (39)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c84-b1c9ffca056c",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (34)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c90-7815c50d3bf2",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (25)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c91-7a96458e2324",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (31)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c94-483aa1b8c1e2",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (30)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c98-0b48e32f8970",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (31)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c122-5bc233399290",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (49)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c159-64bc9cd15442",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (59)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "dao_tao_sat_hach_va_cap_gplx_table_aware-7bf27f6c3a-c164-f6ae184c795a",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (26)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "luat_an_ninh_trat_tu_atgt_table_aware-ea21076fb5-c1-6aadd6ded415",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (42)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "luat_an_ninh_trat_tu_atgt_table_aware-ea21076fb5-c27-e27c64f0fac9",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (50)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "luat_an_ninh_trat_tu_atgt_table_aware-ea21076fb5-c74-9c90827c75e5",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (64)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "luat_an_ninh_trat_tu_atgt_table_aware-ea21076fb5-c196-a9b8e51467c3",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (62)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "luat_an_ninh_trat_tu_atgt_table_aware-ea21076fb5-c216-99df0cb1ea12",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (42)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c1-dec99913fdc6",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (20)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c2-7057fec41341",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (32)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c22-c8915c746567",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (17)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c23-7bfcfea714e9",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (47)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c87-4be87fea69ea",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (17)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c88-fb03f268b037",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (67)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c112-820bb31ce628",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (79)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c133-5be5c9ef05ee",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (17)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c142-f86361ff60e8",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (55)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c190-68c0265b24b0",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (17)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c191-a60f08a82fe9",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (62)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c251-734f9000dbb5",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (17)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c251-734f9000dbb5",
+      "code": "duplicate_chunk",
+      "message": "Possible duplicate of xu_phat_long_table_aware-55f44b3b7a-c22-c8915c746567."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c252-5aeb1150b2b9",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (41)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c253-6193e2a44a4a",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (60)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c254-7be647836b35",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (40)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c291-3f08f321c45f",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (64)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c319-7f7ec1be6b23",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (71)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c332-5e161507c252",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (63)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c350-cd795b2eba1b",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (59)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c358-d983f5e37687",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (69)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c361-74cd7e26d959",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (50)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c362-10568430785d",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (37)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c389-cef850d2c042",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (34)."
+    },
+    {
+      "level": "warning",
+      "chunk_id": "xu_phat_long_table_aware-55f44b3b7a-c420-62d9408e95ba",
+      "code": "short_chunk",
+      "message": "Chunk shorter than 80 chars (41)."
+    }
+  ]
+}
