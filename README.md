@@ -23,8 +23,9 @@ The project follows three layers:
 ```bash
 python3 -m unittest discover -v -s tests -p "test_*.py"
 python3 scripts/run_offline_index.py --raw-dir data/raw/txt_md --extra-dir data/processed/text --out-dir data/index --log-level INFO
+python3 scripts/run_offline_index.py --raw-dir data/raw/txt_md --extra-dir data/processed/text --out-dir data/index --with-chroma --log-level INFO
 python3 scripts/convert_pdf_table_aware.py --pdf data/raw/pdf/<your_file>.pdf
-python3 scripts/search_index.py --query "cho tôi bảng số giờ học hạng A1" --index-dir data/index --log-level INFO
+python3 scripts/search_index.py --query "cho tôi bảng số giờ học hạng A1" --index-dir data/index --mode hybrid --dense-backend auto --log-level INFO
 ```
 
 ## Current Scope (M1)
@@ -59,6 +60,19 @@ When converting legal PDFs containing tables:
 - The index now stores `content_type` in chunk metadata (`text` or `table`).
 - `scripts/search_index.py` applies a table-priority rerank when query intent indicates table lookup.
 - Search output now includes formatted legal citations (e.g., `Điều`, `Chương`, `Thông tư/Nghị định` when available).
+
+## M2 Online Retrieval
+
+- Retrieval modes:
+  - `--mode sparse`: BM25 + table-priority rerank.
+  - `--mode hybrid`: BM25 + dense (ChromaDB when available, fallback Jaccard in auto mode) + score fusion + table-priority.
+- Build ChromaDB vector index:
+  - `python3 scripts/run_offline_index.py ... --with-chroma`
+- Force dense backend while searching:
+  - `--dense-backend chroma|auto|jaccard`
+- API (optional, if dependencies are installed):
+  - `python3 scripts/run_retrieval_api.py --index-dir data/index --host 127.0.0.1 --port 8000`
+  - Endpoints: `GET /health`, `POST /retrieve`
 
 ## Logging
 

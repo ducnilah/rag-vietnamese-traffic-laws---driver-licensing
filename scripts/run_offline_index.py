@@ -11,6 +11,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from traffic_rag.offline.indexing import OfflineIndexer
+from traffic_rag.vector.chroma import CHROMA_COLLECTION_DEFAULT, CHROMA_DIRNAME_DEFAULT
 
 
 def main() -> None:
@@ -31,6 +32,22 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, default=ROOT / "data" / "index")
     parser.add_argument("--target-chars", type=int, default=1000)
     parser.add_argument("--overlap-chars", type=int, default=150)
+    parser.add_argument(
+        "--with-chroma",
+        action="store_true",
+        help="Also build ChromaDB dense index under out-dir/chroma",
+    )
+    parser.add_argument(
+        "--chroma-dir",
+        type=Path,
+        default=None,
+        help=f"Override ChromaDB persist directory (default: <out-dir>/{CHROMA_DIRNAME_DEFAULT})",
+    )
+    parser.add_argument(
+        "--chroma-collection",
+        default=CHROMA_COLLECTION_DEFAULT,
+        help=f"ChromaDB collection name (default: {CHROMA_COLLECTION_DEFAULT})",
+    )
     parser.add_argument("--log-level", default="INFO", help="Logging level: DEBUG/INFO/WARNING/ERROR")
     args = parser.parse_args()
 
@@ -40,7 +57,14 @@ def main() -> None:
     )
 
     indexer = OfflineIndexer(target_chars=args.target_chars, overlap_chars=args.overlap_chars)
-    summary = indexer.build(args.raw_dir, args.out_dir, extra_dirs=args.extra_dir)
+    summary = indexer.build(
+        args.raw_dir,
+        args.out_dir,
+        extra_dirs=args.extra_dir,
+        build_chroma=args.with_chroma,
+        chroma_dir=args.chroma_dir,
+        chroma_collection=args.chroma_collection,
+    )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
 

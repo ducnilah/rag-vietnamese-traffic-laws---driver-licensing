@@ -2,13 +2,18 @@ import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 from .bm25 import BM25Index
 from .models import Chunk, SourceDocument
 from .parser import parse_directory
 from .quality import QualityReport, run_quality_checks
 from .table_aware_chunker import chunk_document_with_table_awareness
+from traffic_rag.vector.chroma import (
+    CHROMA_COLLECTION_DEFAULT,
+    CHROMA_DIRNAME_DEFAULT,
+    ChromaIndexer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +70,15 @@ class OfflineIndexer:
 
         return sorted(selected.values(), key=lambda item: item.source_path)
 
-    def build(self, raw_dir: Path, out_dir: Path, extra_dirs: List[Path] = None) -> Dict[str, object]:
+    def build(
+        self,
+        raw_dir: Path,
+        out_dir: Path,
+        extra_dirs: Optional[List[Path]] = None,
+        build_chroma: bool = False,
+        chroma_dir: Optional[Path] = None,
+        chroma_collection: str = CHROMA_COLLECTION_DEFAULT,
+    ) -> Dict[str, object]:
         out_dir.mkdir(parents=True, exist_ok=True)
         logger.info("offline_index.build started out_dir=%s", out_dir)
 
@@ -109,6 +122,15 @@ class OfflineIndexer:
         bm25.build(chunks)
         logger.info("bm25_built docs=%d", len(chunks))
 
+        chroma_summary: Dict[str, object] = {"enabled": False}
+        if build_chroma:
+            vector_dir = chroma_dir if chroma_dir else out_dir / CHROMA_DIRNAME_DEFAULT
+            chroma_indexer = ChromaIndexer(
+                persist_dir=vector_dir,
+                collection_name=chroma_collection,
+            )
+            chroma_summary = chroma_indexer.build(chunks)
+
         documents_path = out_dir / "documents.jsonl"
         chunks_path = out_dir / "chunks.jsonl"
         bm25_path = out_dir / "bm25.json"
@@ -146,4 +168,5 @@ class OfflineIndexer:
                 "bm25": str(bm25_path),
                 "quality_report": str(report_path),
             },
+            "chroma": chroma_summary,
         }
