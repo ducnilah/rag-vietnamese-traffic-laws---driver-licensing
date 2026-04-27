@@ -21,8 +21,20 @@ if FASTAPI_AVAILABLE:
         candidate_k: int = Field(default=30, ge=1, le=200)
         mode: str = Field(default="hybrid", pattern="^(hybrid|sparse)$")
         dense_backend: str = Field(default="auto", pattern="^(auto|chroma|jaccard)$")
+
+    class ContextRequest(BaseModel):  # type: ignore[misc]
+        query: str
+        top_k: int = Field(default=5, ge=1, le=50)
+        candidate_k: int = Field(default=30, ge=1, le=200)
+        neighbor_window: int = Field(default=1, ge=0, le=5)
+        max_context_tokens: int = Field(default=1800, ge=64, le=12000)
+        mode: str = Field(default="hybrid", pattern="^(hybrid|sparse)$")
+        dense_backend: str = Field(default="auto", pattern="^(auto|chroma|jaccard)$")
 else:
     class RetrieveRequest:  # pragma: no cover
+        pass
+
+    class ContextRequest:  # pragma: no cover
         pass
 
 
@@ -76,6 +88,45 @@ def create_app(index_dir: Path) -> "FastAPI":
                 }
                 for hit in hits
             ],
+        }
+
+    @app.post("/context")
+    def context(req: ContextRequest) -> Dict[str, Any]:
+        use_hybrid = req.mode == "hybrid"
+        if use_hybrid:
+            service_local = RetrievalService(index_dir, dense_backend=req.dense_backend)
+        else:
+            service_local = RetrievalService(index_dir, dense_backend="jaccard")
+
+        package = service_local.build_context(
+            query=req.query,
+            top_k=req.top_k,
+            candidate_k=req.candidate_k,
+            use_hybrid=use_hybrid,
+            neighbor_window=req.neighbor_window,
+            max_context_tokens=req.max_context_tokens,
+        )
+        return {
+            "query": package.query,
+            "rewritten_query": package.rewritten_query,
+            "mode": req.mode,
+            "dense_backend": req.dense_backend if use_hybrid else None,
+            "estimated_tokens": package.estimated_tokens,
+            "confidence": package.confidence,
+            "citation_map": package.citation_map,
+            "chunks": [
+                {
+                    "slot": chunk.slot,
+                    "chunk_id": chunk.chunk_id,
+                    "doc_id": chunk.doc_id,
+                    "content_type": chunk.content_type,
+                    "score": round(chunk.final_score, 6),
+                    "citation": chunk.citation,
+                    "preview": chunk.text[:300],
+                }
+                for chunk in package.chunks
+            ],
+            "context_text": package.context_text,
         }
 
     return app

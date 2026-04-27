@@ -6,6 +6,7 @@ from typing import Dict, List, Literal, Optional
 
 from traffic_rag.offline.bm25 import BM25Index, tokenize
 from traffic_rag.online.citation import build_citation
+from traffic_rag.online.context import ContextBuilder, ContextPackage
 from traffic_rag.online.dense import ChromaDenseRetriever, DenseRetriever, JaccardDenseRetriever
 from traffic_rag.online.fusion import (
     minmax_normalize,
@@ -72,6 +73,7 @@ class RetrievalService:
         self.index_dir = index_dir
         self.bm25 = BM25Index.load(index_dir / "bm25.json")
         self.store = ChunkStore.load(index_dir / "chunks.jsonl")
+        self.context_builder = ContextBuilder(self.store)
         self.dense_backend = dense_backend
         if dense_retriever:
             self.dense = dense_retriever
@@ -195,6 +197,32 @@ class RetrievalService:
             )
             return deduped
         return results[:top_k]
+
+    def build_context(
+        self,
+        query: str,
+        top_k: int = 5,
+        candidate_k: int = 30,
+        use_hybrid: bool = True,
+        table_boost: float = 1.35,
+        apply_diversity: bool = True,
+        neighbor_window: int = 1,
+        max_context_tokens: int = 1800,
+    ) -> ContextPackage:
+        hits = self.retrieve(
+            query=query,
+            top_k=top_k,
+            candidate_k=candidate_k,
+            use_hybrid=use_hybrid,
+            table_boost=table_boost,
+            apply_diversity=apply_diversity,
+        )
+        return self.context_builder.build(
+            query=query,
+            hits=hits,
+            neighbor_window=neighbor_window,
+            max_context_tokens=max_context_tokens,
+        )
 
     @staticmethod
     def _token_set(text: str) -> set[str]:
