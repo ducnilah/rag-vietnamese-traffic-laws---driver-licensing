@@ -5,7 +5,13 @@ from typing import Dict, List, Optional, Protocol, Set
 
 from traffic_rag.offline.bm25 import tokenize
 from traffic_rag.online.store import ChunkStore
-from traffic_rag.vector.chroma import CHROMA_COLLECTION_DEFAULT, HashEmbeddingFunction, chromadb
+from traffic_rag.vector.chroma import (
+    CHROMA_COLLECTION_DEFAULT,
+    CHROMA_EMBEDDING_BACKEND_DEFAULT,
+    CHROMA_EMBEDDING_MODEL_DEFAULT,
+    build_embedding_function,
+    chromadb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +65,8 @@ class ChromaDenseRetriever:
         self,
         chroma_dir: Path,
         collection_name: str = CHROMA_COLLECTION_DEFAULT,
+        embedding_backend: str = CHROMA_EMBEDDING_BACKEND_DEFAULT,
+        embedding_model: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
         embedding_dim: int = 384,
     ) -> None:
         if chromadb is None:
@@ -66,10 +74,19 @@ class ChromaDenseRetriever:
                 "chromadb is not installed. Install with: python3 -m pip install chromadb"
             )
         self.client = chromadb.PersistentClient(path=str(chroma_dir))
-        self.embedding_fn = HashEmbeddingFunction(dim=embedding_dim)
         # Use precomputed query embeddings at search time to avoid runtime
         # incompatibilities across Chroma embedding-function interfaces.
         self.collection = self.client.get_collection(name=collection_name)
+        metadata = self.collection.metadata or {}
+        resolved_backend = str(metadata.get("embedding_backend", embedding_backend))
+        resolved_model = str(metadata.get("embedding_model", embedding_model))
+        self.embedding_fn = build_embedding_function(
+            backend=resolved_backend,
+            model_name=resolved_model,
+            hash_dim=embedding_dim,
+        )
+        self.embedding_backend = resolved_backend
+        self.embedding_model = resolved_model
         self.collection_name = collection_name
 
     @classmethod
@@ -77,12 +94,16 @@ class ChromaDenseRetriever:
         cls,
         chroma_dir: Path,
         collection_name: str = CHROMA_COLLECTION_DEFAULT,
+        embedding_backend: str = CHROMA_EMBEDDING_BACKEND_DEFAULT,
+        embedding_model: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
         embedding_dim: int = 384,
     ) -> Optional["ChromaDenseRetriever"]:
         try:
             return cls(
                 chroma_dir=chroma_dir,
                 collection_name=collection_name,
+                embedding_backend=embedding_backend,
+                embedding_model=embedding_model,
                 embedding_dim=embedding_dim,
             )
         except Exception as exc:

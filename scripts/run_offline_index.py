@@ -11,7 +11,12 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from traffic_rag.offline.indexing import OfflineIndexer
-from traffic_rag.vector.chroma import CHROMA_COLLECTION_DEFAULT, CHROMA_DIRNAME_DEFAULT
+from traffic_rag.vector.chroma import (
+    CHROMA_COLLECTION_DEFAULT,
+    CHROMA_DIRNAME_DEFAULT,
+    CHROMA_EMBEDDING_BACKEND_DEFAULT,
+    CHROMA_EMBEDDING_MODEL_DEFAULT,
+)
 
 
 def main() -> None:
@@ -48,6 +53,17 @@ def main() -> None:
         default=CHROMA_COLLECTION_DEFAULT,
         help=f"ChromaDB collection name (default: {CHROMA_COLLECTION_DEFAULT})",
     )
+    parser.add_argument(
+        "--chroma-embedding-backend",
+        choices=["bge-m3", "hash"],
+        default=CHROMA_EMBEDDING_BACKEND_DEFAULT,
+        help=f"Embedding backend for Chroma index (default: {CHROMA_EMBEDDING_BACKEND_DEFAULT})",
+    )
+    parser.add_argument(
+        "--chroma-embedding-model",
+        default=CHROMA_EMBEDDING_MODEL_DEFAULT,
+        help=f"Embedding model name for Chroma backend (default: {CHROMA_EMBEDDING_MODEL_DEFAULT})",
+    )
     parser.add_argument("--log-level", default="INFO", help="Logging level: DEBUG/INFO/WARNING/ERROR")
     args = parser.parse_args()
 
@@ -64,6 +80,8 @@ def main() -> None:
         build_chroma=args.with_chroma,
         chroma_dir=args.chroma_dir,
         chroma_collection=args.chroma_collection,
+        chroma_embedding_backend=args.chroma_embedding_backend,
+        chroma_embedding_model=args.chroma_embedding_model,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

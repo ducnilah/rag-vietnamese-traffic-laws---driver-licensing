@@ -15,10 +15,20 @@ except Exception as exc:  # pragma: no cover - depends on local environment
     chromadb = None  # type: ignore[assignment]
     CHROMADB_IMPORT_ERROR = exc
 
+try:
+    from sentence_transformers import SentenceTransformer
+
+    SENTENCE_TRANSFORMERS_IMPORT_ERROR: Optional[Exception] = None
+except Exception as exc:  # pragma: no cover - depends on local environment
+    SentenceTransformer = None  # type: ignore[assignment]
+    SENTENCE_TRANSFORMERS_IMPORT_ERROR = exc
+
 logger = logging.getLogger(__name__)
 
 CHROMA_DIRNAME_DEFAULT = "chroma"
 CHROMA_COLLECTION_DEFAULT = "traffic_law_chunks"
+CHROMA_EMBEDDING_BACKEND_DEFAULT = "bge-m3"
+CHROMA_EMBEDDING_MODEL_DEFAULT = "BAAI/bge-m3"
 
 
 def chromadb_available() -> bool:
@@ -72,6 +82,79 @@ class HashEmbeddingFunction:
         return self._embed_one(input)
 
 
+class BgeM3EmbeddingFunction:
+    def __init__(
+        self,
+        model_name: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
+        device: Optional[str] = None,
+        normalize_embeddings: bool = True,
+    ) -> None:
+        if SentenceTransformer is None:
+            error = (
+                "sentence-transformers is not installed. Install with: "
+                "python3 -m pip install sentence-transformers torch"
+            )
+            if SENTENCE_TRANSFORMERS_IMPORT_ERROR:
+                error += f" (import error: {SENTENCE_TRANSFORMERS_IMPORT_ERROR})"
+            raise RuntimeError(error)
+        self.model_name = model_name
+        self.device = device
+        self.normalize_embeddings = normalize_embeddings
+        self.model = (
+            SentenceTransformer(model_name, device=device)
+            if device
+            else SentenceTransformer(model_name)
+        )
+
+    def name(self) -> str:
+        return f"bge-m3-{self.model_name}"
+
+    def get_config(self) -> Dict[str, object]:
+        return {
+            "model_name": self.model_name,
+            "device": self.device,
+            "normalize_embeddings": self.normalize_embeddings,
+        }
+
+    @staticmethod
+    def build_from_config(config: Dict[str, object]) -> "BgeM3EmbeddingFunction":
+        return BgeM3EmbeddingFunction(
+            model_name=str(config.get("model_name", CHROMA_EMBEDDING_MODEL_DEFAULT)),
+            device=(
+                None
+                if config.get("device") in (None, "None", "")
+                else str(config.get("device"))
+            ),
+            normalize_embeddings=bool(config.get("normalize_embeddings", True)),
+        )
+
+    def __call__(self, input: List[str]) -> List[List[float]]:  # noqa: A002
+        vectors = self.model.encode(
+            input,
+            convert_to_numpy=True,
+            normalize_embeddings=self.normalize_embeddings,
+        )
+        return vectors.tolist()
+
+    def embed_documents(self, input: List[str]) -> List[List[float]]:  # noqa: A002
+        return self.__call__(input)
+
+    def embed_query(self, input: str) -> List[float]:  # noqa: A002
+        return self.__call__([input])[0]
+
+
+def build_embedding_function(
+    backend: str = CHROMA_EMBEDDING_BACKEND_DEFAULT,
+    model_name: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
+    hash_dim: int = 384,
+) -> object:
+    if backend == "bge-m3":
+        return BgeM3EmbeddingFunction(model_name=model_name)
+    if backend == "hash":
+        return HashEmbeddingFunction(dim=hash_dim)
+    raise ValueError(f"Unsupported embedding backend: {backend}")
+
+
 def _sanitize_metadata(chunk: Chunk) -> Dict[str, object]:
     metadata: Dict[str, object] = {
         "doc_id": chunk.doc_id,
@@ -93,11 +176,19 @@ class ChromaIndexer:
         self,
         persist_dir: Path,
         collection_name: str = CHROMA_COLLECTION_DEFAULT,
+        embedding_backend: str = CHROMA_EMBEDDING_BACKEND_DEFAULT,
+        embedding_model: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
         embedding_dim: int = 384,
     ) -> None:
         self.persist_dir = persist_dir
         self.collection_name = collection_name
-        self.embedding_fn = HashEmbeddingFunction(dim=embedding_dim)
+        self.embedding_backend = embedding_backend
+        self.embedding_model = embedding_model
+        self.embedding_fn = build_embedding_function(
+            backend=embedding_backend,
+            model_name=embedding_model,
+            hash_dim=embedding_dim,
+        )
 
     def build(self, chunks: List[Chunk], reset_collection: bool = True) -> Dict[str, object]:
         if chromadb is None:
@@ -121,7 +212,11 @@ class ChromaIndexer:
         collection = client.get_or_create_collection(
             name=self.collection_name,
             embedding_function=self.embedding_fn,
-            metadata={"hnsw:space": "cosine"},
+            metadata={
+                "hnsw:space": "cosine",
+                "embedding_backend": self.embedding_backend,
+                "embedding_model": self.embedding_model,
+            },
         )
 
         batch_size = 128
@@ -144,5 +239,6 @@ class ChromaIndexer:
             "collection": self.collection_name,
             "vectors": len(chunks),
             "persist_dir": str(self.persist_dir),
-            "embedding": f"hash-{self.embedding_fn.dim}",
+            "embedding_backend": self.embedding_backend,
+            "embedding_model": self.embedding_model,
         }

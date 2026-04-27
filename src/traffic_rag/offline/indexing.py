@@ -12,6 +12,8 @@ from .table_aware_chunker import chunk_document_with_table_awareness
 from traffic_rag.vector.chroma import (
     CHROMA_COLLECTION_DEFAULT,
     CHROMA_DIRNAME_DEFAULT,
+    CHROMA_EMBEDDING_BACKEND_DEFAULT,
+    CHROMA_EMBEDDING_MODEL_DEFAULT,
     ChromaIndexer,
 )
 
@@ -78,6 +80,8 @@ class OfflineIndexer:
         build_chroma: bool = False,
         chroma_dir: Optional[Path] = None,
         chroma_collection: str = CHROMA_COLLECTION_DEFAULT,
+        chroma_embedding_backend: str = CHROMA_EMBEDDING_BACKEND_DEFAULT,
+        chroma_embedding_model: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
     ) -> Dict[str, object]:
         out_dir.mkdir(parents=True, exist_ok=True)
         logger.info("offline_index.build started out_dir=%s", out_dir)
@@ -128,6 +132,8 @@ class OfflineIndexer:
             chroma_indexer = ChromaIndexer(
                 persist_dir=vector_dir,
                 collection_name=chroma_collection,
+                embedding_backend=chroma_embedding_backend,
+                embedding_model=chroma_embedding_model,
             )
             chroma_summary = chroma_indexer.build(chunks)
 
