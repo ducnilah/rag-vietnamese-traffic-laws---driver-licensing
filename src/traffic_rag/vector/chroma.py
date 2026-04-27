@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import zlib
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -88,6 +89,7 @@ class BgeM3EmbeddingFunction:
         model_name: str = CHROMA_EMBEDDING_MODEL_DEFAULT,
         device: Optional[str] = None,
         normalize_embeddings: bool = True,
+        batch_size: int = 8,
     ) -> None:
         if SentenceTransformer is None:
             error = (
@@ -100,6 +102,7 @@ class BgeM3EmbeddingFunction:
         self.model_name = model_name
         self.device = device
         self.normalize_embeddings = normalize_embeddings
+        self.batch_size = max(1, int(batch_size))
         self.model = (
             SentenceTransformer(model_name, device=device)
             if device
@@ -114,6 +117,7 @@ class BgeM3EmbeddingFunction:
             "model_name": self.model_name,
             "device": self.device,
             "normalize_embeddings": self.normalize_embeddings,
+            "batch_size": self.batch_size,
         }
 
     @staticmethod
@@ -126,6 +130,7 @@ class BgeM3EmbeddingFunction:
                 else str(config.get("device"))
             ),
             normalize_embeddings=bool(config.get("normalize_embeddings", True)),
+            batch_size=int(config.get("batch_size", 8)),
         )
 
     def __call__(self, input: List[str]) -> List[List[float]]:  # noqa: A002
@@ -133,6 +138,7 @@ class BgeM3EmbeddingFunction:
             input,
             convert_to_numpy=True,
             normalize_embeddings=self.normalize_embeddings,
+            batch_size=self.batch_size,
         )
         return vectors.tolist()
 
@@ -149,7 +155,19 @@ def build_embedding_function(
     hash_dim: int = 384,
 ) -> object:
     if backend == "bge-m3":
-        return BgeM3EmbeddingFunction(model_name=model_name)
+        device = os.getenv("TRAFFIC_RAG_EMBED_DEVICE")
+        if device == "":
+            device = None
+        batch_size_raw = os.getenv("TRAFFIC_RAG_EMBED_BATCH_SIZE", "8")
+        try:
+            batch_size = max(1, int(batch_size_raw))
+        except ValueError:
+            batch_size = 8
+        return BgeM3EmbeddingFunction(
+            model_name=model_name,
+            device=device,
+            batch_size=batch_size,
+        )
     if backend == "hash":
         return HashEmbeddingFunction(dim=hash_dim)
     raise ValueError(f"Unsupported embedding backend: {backend}")

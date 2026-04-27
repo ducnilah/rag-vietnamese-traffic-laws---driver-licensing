@@ -208,7 +208,10 @@ class RetrievalService:
         apply_diversity: bool = True,
         neighbor_window: int = 1,
         max_context_tokens: int = 1800,
+        max_table_chunks: int = 5,
+        max_text_chunks: int = 2,
     ) -> ContextPackage:
+        table_intent = has_table_intent(query)
         hits = self.retrieve(
             query=query,
             top_k=top_k,
@@ -222,6 +225,9 @@ class RetrievalService:
             hits=hits,
             neighbor_window=neighbor_window,
             max_context_tokens=max_context_tokens,
+            table_intent=table_intent,
+            max_table_chunks=max_table_chunks,
+            max_text_chunks=max_text_chunks,
         )
 
     @staticmethod

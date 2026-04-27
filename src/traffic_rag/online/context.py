@@ -71,10 +71,29 @@ class ContextBuilder:
         hits: List[ScoredHit],
         neighbor_window: int = 1,
         max_context_tokens: int = 1800,
+        table_intent: bool = False,
+        neighbor_min_center_score: float = 0.75,
+        neighbor_min_query_similarity: float = 0.12,
+        min_query_similarity: float = 0.06,
+        max_table_chunks: int = 5,
+        max_text_chunks: int = 2,
     ) -> ContextPackage:
         rewritten_query = simple_query_rewrite(query)
-        expanded = self._expand_neighbors(hits, window=neighbor_window)
-        selected = self._pack_to_budget(expanded, max_context_tokens=max_context_tokens)
+        expanded = self._expand_neighbors(
+            hits,
+            query=rewritten_query,
+            window=neighbor_window,
+            min_center_score=neighbor_min_center_score,
+            min_query_similarity=neighbor_min_query_similarity,
+        )
+        filtered = self._filter_by_query_similarity(expanded, query=rewritten_query, threshold=min_query_similarity)
+        mixed = self._apply_content_mix(
+            filtered,
+            table_intent=table_intent,
+            max_table_chunks=max_table_chunks,
+            max_text_chunks=max_text_chunks,
+        )
+        selected = self._pack_to_budget(mixed, max_context_tokens=max_context_tokens)
 
         chunks: List[ContextChunk] = []
         citation_map: Dict[str, Dict[str, object]] = {}
@@ -126,7 +145,14 @@ class ContextBuilder:
             return (int(match.group(1)), row.start_char)
         return (10**9, row.start_char)
 
-    def _expand_neighbors(self, hits: List[ScoredHit], window: int) -> List[ScoredHit]:
+    def _expand_neighbors(
+        self,
+        hits: List[ScoredHit],
+        query: str,
+        window: int,
+        min_center_score: float,
+        min_query_similarity: float,
+    ) -> List[ScoredHit]:
         if window <= 0 or not hits:
             return hits
 
@@ -141,6 +167,8 @@ class ContextBuilder:
             # Keep table hits as-is; neighbor expansion is more useful for text continuity.
             if hit.content_type == "table":
                 continue
+            if hit.final_score < min_center_score:
+                continue
 
             loc = self._index_in_doc.get(hit.chunk_id)
             if not loc:
@@ -153,6 +181,10 @@ class ContextBuilder:
             for idx in range(start, end):
                 row = rows[idx]
                 if row.chunk_id in seen:
+                    continue
+                if row.metadata.get("content_type", "text") != "text":
+                    continue
+                if self._query_similarity(query, row.text) < min_query_similarity:
                     continue
                 # Synthetic neighbor hit keeps base score slightly discounted.
                 expanded.append(
@@ -169,6 +201,63 @@ class ContextBuilder:
                 seen.add(row.chunk_id)
 
         return expanded
+
+    def _filter_by_query_similarity(
+        self,
+        hits: List[ScoredHit],
+        query: str,
+        threshold: float,
+    ) -> List[ScoredHit]:
+        kept = [hit for hit in hits if self._query_similarity(query, hit.text) >= threshold]
+        if kept:
+            return kept
+        return hits[:1]
+
+    @staticmethod
+    def _token_set(text: str) -> set[str]:
+        return set(tokenize(text))
+
+    @classmethod
+    def _query_similarity(cls, query: str, text: str) -> float:
+        q = cls._token_set(query)
+        t = cls._token_set(text)
+        if not q or not t:
+            return 0.0
+        inter = len(q.intersection(t))
+        if inter == 0:
+            return 0.0
+        union = len(q.union(t))
+        return inter / float(union)
+
+    @staticmethod
+    def _apply_content_mix(
+        hits: List[ScoredHit],
+        table_intent: bool,
+        max_table_chunks: int,
+        max_text_chunks: int,
+    ) -> List[ScoredHit]:
+        table_cap = max_table_chunks if table_intent else min(2, max_table_chunks)
+        text_cap = max_text_chunks if table_intent else max(5, max_text_chunks)
+        selected_tables: List[ScoredHit] = []
+        selected_texts: List[ScoredHit] = []
+
+        for hit in hits:
+            if hit.content_type == "table":
+                if len(selected_tables) < table_cap:
+                    selected_tables.append(hit)
+            else:
+                if len(selected_texts) < text_cap:
+                    selected_texts.append(hit)
+
+        # For table-intent queries, if enough table evidence exists, avoid noisy text tails.
+        if table_intent and len(selected_tables) >= 2:
+            selected = selected_tables
+        else:
+            selected = selected_tables + selected_texts
+
+        if selected:
+            return selected
+        return hits[:1]
 
     @staticmethod
     def _pack_to_budget(hits: List[ScoredHit], max_context_tokens: int) -> List[ScoredHit]:
