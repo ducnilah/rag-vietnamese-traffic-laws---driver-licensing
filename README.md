@@ -17,8 +17,11 @@ Status: implemented.
 2. `M2` Online retrieval foundation: hybrid retrieval API, BM25 + dense (ChromaDB target), fusion/rerank, retrieval tests.  
 Status: implemented baseline.
 3. `M3` Context builder: citation map, confidence scoring, neighbor/overlap chunk expansion, token-bounded context assembly.
+Status: implemented baseline.
 4. `M4` Conversation persistence: thread/message storage, short-term + long-term memory, summary pipeline.
+Status: implemented baseline.
 5. `M5` LLM integration and guardrails: grounded generation, policy checks, OOD/hallucination controls.
+Status: implemented baseline.
 6. `M6` Evaluation harness and regression: retrieval metrics, faithfulness checks, latency tracking, regression suite.
 7. `M7` Production readiness: auth/session integration hooks, observability, migration/runbook hardening.
 
@@ -31,6 +34,7 @@ Status: implemented baseline.
 - Vector DB (dense retrieval): `ChromaDB`
 - Lexical retrieval: `BM25`
 - Retrieval strategy: `Hybrid BM25 + Dense + Fusion/Rerank`
+- LLM runtime (M5 default): `Qwen2.5 1.5B Instruct` via `Ollama`
 - Frontend: `Next.js + TailwindCSS`
 
 ## Data Folder Convention

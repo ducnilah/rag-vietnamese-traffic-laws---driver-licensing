@@ -3,14 +3,18 @@ from typing import Any, Dict, List, Optional
 
 try:
     from fastapi import FastAPI
+    from fastapi import HTTPException
     from pydantic import BaseModel, Field
     FASTAPI_AVAILABLE = True
 except ImportError:  # pragma: no cover
     FastAPI = None  # type: ignore
+    HTTPException = RuntimeError  # type: ignore
     BaseModel = object  # type: ignore
     Field = None  # type: ignore
     FASTAPI_AVAILABLE = False
 
+from traffic_rag.online.generator import ChatGenerator
+from traffic_rag.online.guardrails import evaluate_query_guardrails
 from traffic_rag.online.service import RetrievalService, has_table_intent
 from traffic_rag.state.service import ConversationService, SQLALCHEMY_AVAILABLE
 
@@ -48,6 +52,16 @@ if FASTAPI_AVAILABLE:
 
     class MemoryPatchRequest(BaseModel):  # type: ignore[misc]
         items: List[MemoryItemRequest]
+
+    class ChatRequest(BaseModel):  # type: ignore[misc]
+        user_id: str
+        query: str
+        mode: str = Field(default="hybrid", pattern="^(hybrid|sparse)$")
+        dense_backend: str = Field(default="auto", pattern="^(auto|chroma|jaccard)$")
+        top_k: int = Field(default=5, ge=1, le=50)
+        candidate_k: int = Field(default=30, ge=1, le=200)
+        neighbor_window: int = Field(default=1, ge=0, le=5)
+        max_context_tokens: int = Field(default=1800, ge=64, le=12000)
 else:
     class RetrieveRequest:  # pragma: no cover
         pass
@@ -64,6 +78,9 @@ else:
     class MemoryPatchRequest:  # pragma: no cover
         pass
 
+    class ChatRequest:  # pragma: no cover
+        pass
+
 
 def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastAPI":
     if not FASTAPI_AVAILABLE:
@@ -72,6 +89,7 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
         )
 
     service = RetrievalService(index_dir)
+    generator = ChatGenerator.from_env()
     conversation = ConversationService(db_url) if SQLALCHEMY_AVAILABLE else None
     if conversation:
         conversation.create_schema()
@@ -227,5 +245,75 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
         return {"items": conversation.list_memory(user_id)}
+
+    @app.post("/threads/{thread_id}/chat")
+    def chat(thread_id: str, req: ChatRequest) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+
+        thread = conversation.get_thread(thread_id)
+        if thread is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if thread.user_id != req.user_id:
+            raise HTTPException(status_code=403, detail="thread does not belong to user")
+
+        guard = evaluate_query_guardrails(req.query)
+        conversation.add_message(thread_id, "user", req.query)
+
+        if not guard.allow:
+            msg = conversation.add_message(
+                thread_id,
+                "assistant",
+                guard.message,
+                citations={"guardrail": {"code": guard.code, "risks": guard.risks}},
+            )
+            return {
+                "thread_id": thread_id,
+                "guardrail": {"allow": guard.allow, "code": guard.code, "risks": guard.risks},
+                "assistant_message": msg.__dict__,
+                "context": None,
+            }
+
+        use_hybrid = req.mode == "hybrid"
+        if use_hybrid:
+            service_local = RetrievalService(index_dir, dense_backend=req.dense_backend)
+        else:
+            service_local = RetrievalService(index_dir, dense_backend="jaccard")
+        context = service_local.build_context(
+            query=req.query,
+            top_k=req.top_k,
+            candidate_k=req.candidate_k,
+            use_hybrid=use_hybrid,
+            neighbor_window=req.neighbor_window,
+            max_context_tokens=req.max_context_tokens,
+        )
+        generated = generator.generate(req.query, context)
+
+        assistant = conversation.add_message(
+            thread_id,
+            "assistant",
+            generated.answer,
+            citations={
+                "citation_map": context.citation_map,
+                "confidence": context.confidence,
+                "model": generated.model,
+                "fallback": generated.used_fallback,
+            },
+        )
+        return {
+            "thread_id": thread_id,
+            "guardrail": {"allow": True, "code": "OK", "risks": []},
+            "assistant_message": assistant.__dict__,
+            "context": {
+                "rewritten_query": context.rewritten_query,
+                "estimated_tokens": context.estimated_tokens,
+                "confidence": context.confidence,
+                "citation_map": context.citation_map,
+            },
+            "generation": {
+                "model": generated.model,
+                "fallback": generated.used_fallback,
+            },
+        }
 
     return app
