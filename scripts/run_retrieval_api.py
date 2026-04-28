@@ -14,6 +14,7 @@ from traffic_rag.online.api import create_app
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run retrieval API server (M2)")
     parser.add_argument("--index-dir", type=Path, default=ROOT / "data" / "index")
+    parser.add_argument("--db-url", default="sqlite:///data/app.db", help="SQLAlchemy DB URL for M4 state")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
@@ -25,7 +26,7 @@ def main() -> None:
             "uvicorn is not installed. Install with: python3 -m pip install uvicorn fastapi pydantic"
         ) from exc
 
-    app = create_app(args.index_dir)
+    app = create_app(args.index_dir, db_url=args.db_url)
     uvicorn.run(app, host=args.host, port=args.port)
 
 

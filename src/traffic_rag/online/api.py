@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 try:
     from fastapi import FastAPI
@@ -12,6 +12,7 @@ except ImportError:  # pragma: no cover
     FASTAPI_AVAILABLE = False
 
 from traffic_rag.online.service import RetrievalService, has_table_intent
+from traffic_rag.state.service import ConversationService, SQLALCHEMY_AVAILABLE
 
 
 if FASTAPI_AVAILABLE:
@@ -30,6 +31,23 @@ if FASTAPI_AVAILABLE:
         max_context_tokens: int = Field(default=1800, ge=64, le=12000)
         mode: str = Field(default="hybrid", pattern="^(hybrid|sparse)$")
         dense_backend: str = Field(default="auto", pattern="^(auto|chroma|jaccard)$")
+
+    class ThreadCreateRequest(BaseModel):  # type: ignore[misc]
+        user_id: str
+        title: str = "New chat"
+
+    class MessageCreateRequest(BaseModel):  # type: ignore[misc]
+        role: str = Field(pattern="^(user|assistant|system)$")
+        content: str
+        citations: Optional[Dict[str, Any]] = None
+
+    class MemoryItemRequest(BaseModel):  # type: ignore[misc]
+        key: str
+        value: str
+        confidence: float = Field(default=0.7, ge=0.0, le=1.0)
+
+    class MemoryPatchRequest(BaseModel):  # type: ignore[misc]
+        items: List[MemoryItemRequest]
 else:
     class RetrieveRequest:  # pragma: no cover
         pass
@@ -37,14 +55,26 @@ else:
     class ContextRequest:  # pragma: no cover
         pass
 
+    class ThreadCreateRequest:  # pragma: no cover
+        pass
 
-def create_app(index_dir: Path) -> "FastAPI":
+    class MessageCreateRequest:  # pragma: no cover
+        pass
+
+    class MemoryPatchRequest:  # pragma: no cover
+        pass
+
+
+def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastAPI":
     if not FASTAPI_AVAILABLE:
         raise RuntimeError(
             "fastapi/pydantic is not installed. Install with: python3 -m pip install fastapi uvicorn pydantic"
         )
 
     service = RetrievalService(index_dir)
+    conversation = ConversationService(db_url) if SQLALCHEMY_AVAILABLE else None
+    if conversation:
+        conversation.create_schema()
     app = FastAPI(title="Traffic RAG Retrieval API", version="0.1.0")
 
     @app.get("/health")
@@ -128,5 +158,74 @@ def create_app(index_dir: Path) -> "FastAPI":
             ],
             "context_text": package.context_text,
         }
+
+    @app.post("/threads")
+    def create_thread(req: ThreadCreateRequest) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        thread = conversation.create_thread(req.user_id, req.title)
+        return thread.__dict__
+
+    @app.get("/threads")
+    def list_threads(user_id: str, limit: int = 20) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        rows = conversation.list_threads(user_id, limit=limit)
+        return {"threads": [row.__dict__ for row in rows]}
+
+    @app.get("/threads/{thread_id}")
+    def get_thread(thread_id: str) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        row = conversation.get_thread(thread_id)
+        if row is None:
+            return {"thread": None}
+        return {"thread": row.__dict__}
+
+    @app.post("/threads/{thread_id}/messages")
+    def add_message(thread_id: str, req: MessageCreateRequest) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        msg = conversation.add_message(thread_id, req.role, req.content, req.citations)
+        return msg.__dict__
+
+    @app.get("/threads/{thread_id}/messages")
+    def list_messages(thread_id: str, limit: int = 50) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        rows = conversation.list_messages(thread_id, limit=limit)
+        return {"messages": [row.__dict__ for row in rows]}
+
+    @app.post("/threads/{thread_id}/summary:refresh")
+    def refresh_summary(thread_id: str) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        summary = conversation.refresh_summary(thread_id)
+        return {"thread_id": thread_id, "summary": summary}
+
+    @app.get("/threads/{thread_id}/summary")
+    def get_summary(thread_id: str) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        return {"thread_id": thread_id, "summary": conversation.get_summary(thread_id)}
+
+    @app.patch("/users/{user_id}/memory")
+    def patch_memory(user_id: str, req: MemoryPatchRequest) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        for item in req.items:
+            conversation.upsert_memory(
+                user_id=user_id,
+                key=item.key,
+                value=item.value,
+                confidence=item.confidence,
+            )
+        return {"ok": True, "items": conversation.list_memory(user_id)}
+
+    @app.get("/users/{user_id}/memory")
+    def get_memory(user_id: str) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        return {"items": conversation.list_memory(user_id)}
 
     return app
