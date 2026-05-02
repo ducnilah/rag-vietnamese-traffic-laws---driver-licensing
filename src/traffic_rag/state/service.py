@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import base64
+import hashlib
+import hmac
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 try:
-    from sqlalchemy import create_engine, select
+    from sqlalchemy import and_, create_engine, or_, select
     from sqlalchemy.orm import Session, sessionmaker
 
     from .models import Base, Message, Thread, ThreadSummary, User, UserMemory
@@ -45,14 +49,25 @@ class MessageDTO:
     created_at: str
 
 
+@dataclass(frozen=True)
+class UserDTO:
+    id: str
+    email: Optional[str]
+    is_active: bool
+    created_at: str
+
+
 class ConversationService:
-    def __init__(self, db_url: str) -> None:
+    def __init__(self, db_url: str, auth_secret: Optional[str] = None) -> None:
         if not SQLALCHEMY_AVAILABLE:
             raise RuntimeError(
                 "sqlalchemy is not installed. Install with: python3 -m pip install sqlalchemy"
             )
         self.engine = create_engine(db_url, future=True)
         self.session_factory = sessionmaker(bind=self.engine, class_=Session, expire_on_commit=False)
+        self.auth_secret = (auth_secret or os.getenv("TRAFFIC_RAG_AUTH_SECRET") or "dev-secret-change-me").encode(
+            "utf-8"
+        )
 
     def create_schema(self) -> None:
         Base.metadata.create_all(self.engine)
@@ -64,7 +79,66 @@ class ConversationService:
                 session.add(User(id=user_id, email=email))
             elif email and not user.email:
                 user.email = email
+                user.updated_at = utcnow()
             session.commit()
+
+    def register_user(self, email: str, password: str) -> UserDTO:
+        normalized = email.strip().lower()
+        if not normalized or "@" not in normalized:
+            raise ValueError("invalid email")
+        if len(password) < 6:
+            raise ValueError("password too short")
+        with self.session_factory() as session:
+            exists = session.execute(select(User).where(User.email == normalized)).scalar_one_or_none()
+            if exists is not None:
+                raise ValueError("email already exists")
+            now = utcnow()
+            user = User(
+                id=_new_id(),
+                email=normalized,
+                password_hash=self._hash_password(password),
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(user)
+            session.commit()
+            return self._user_to_dto(user)
+
+    def authenticate(self, email: str, password: str) -> Optional[UserDTO]:
+        normalized = email.strip().lower()
+        with self.session_factory() as session:
+            user = session.execute(select(User).where(User.email == normalized)).scalar_one_or_none()
+            if user is None or not user.is_active:
+                return None
+            if not user.password_hash:
+                return None
+            if not self._verify_password(password, user.password_hash):
+                return None
+            return self._user_to_dto(user)
+
+    def get_user(self, user_id: str) -> Optional[UserDTO]:
+        with self.session_factory() as session:
+            row = session.get(User, user_id)
+            return self._user_to_dto(row) if row else None
+
+    def issue_access_token(self, user_id: str, expires_in_sec: int = 86400) -> str:
+        exp = int(datetime.now(timezone.utc).timestamp()) + int(expires_in_sec)
+        payload = {"sub": user_id, "exp": exp}
+        return self._sign_payload(payload)
+
+    def verify_access_token(self, token: str) -> Optional[str]:
+        payload = self._verify_payload(token)
+        if payload is None:
+            return None
+        sub = payload.get("sub")
+        exp = payload.get("exp")
+        if not isinstance(sub, str) or not isinstance(exp, int):
+            return None
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        if exp < now_ts:
+            return None
+        return sub
 
     def create_thread(self, user_id: str, title: str = "New chat") -> ThreadDTO:
         self.ensure_user(user_id)
@@ -92,10 +166,44 @@ class ConversationService:
             ).scalars()
             return [self._thread_to_dto(row) for row in rows]
 
+    def list_threads_any_status(self, user_id: str, limit: int = 20) -> List[ThreadDTO]:
+        with self.session_factory() as session:
+            rows = session.execute(
+                select(Thread).where(Thread.user_id == user_id).order_by(Thread.last_active_at.desc()).limit(limit)
+            ).scalars()
+            return [self._thread_to_dto(row) for row in rows]
+
     def get_thread(self, thread_id: str) -> Optional[ThreadDTO]:
         with self.session_factory() as session:
             row = session.get(Thread, thread_id)
             return self._thread_to_dto(row) if row else None
+
+    def update_thread(
+        self,
+        thread_id: str,
+        *,
+        title: Optional[str] = None,
+        archived: Optional[bool] = None,
+    ) -> Optional[ThreadDTO]:
+        with self.session_factory() as session:
+            row = session.get(Thread, thread_id)
+            if row is None:
+                return None
+            touched = False
+            if title is not None:
+                normalized = title.strip() or "New chat"
+                if row.title != normalized:
+                    row.title = normalized
+                    touched = True
+            if archived is not None:
+                new_archived = bool(archived)
+                if row.archived != new_archived:
+                    row.archived = new_archived
+                    touched = True
+            if touched:
+                row.last_active_at = utcnow()
+                session.commit()
+            return self._thread_to_dto(row)
 
     def add_message(
         self,
@@ -124,15 +232,25 @@ class ConversationService:
             session.commit()
             return self._message_to_dto(msg)
 
-    def list_messages(self, thread_id: str, limit: int = 50) -> List[MessageDTO]:
+    def list_messages(self, thread_id: str, limit: int = 50, before_message_id: Optional[str] = None) -> List[MessageDTO]:
         with self.session_factory() as session:
+            stmt = select(Message).where(Message.thread_id == thread_id)
+            if before_message_id:
+                anchor = session.get(Message, before_message_id)
+                if anchor is None or anchor.thread_id != thread_id:
+                    return []
+                stmt = stmt.where(
+                    or_(
+                        Message.created_at < anchor.created_at,
+                        and_(Message.created_at == anchor.created_at, Message.id < anchor.id),
+                    )
+                )
             rows = session.execute(
-                select(Message)
-                .where(Message.thread_id == thread_id)
-                .order_by(Message.created_at.asc())
-                .limit(limit)
+                stmt.order_by(Message.created_at.desc(), Message.id.desc()).limit(limit)
             ).scalars()
-            return [self._message_to_dto(row) for row in rows]
+            rows_list = list(rows)
+            rows_list.reverse()
+            return [self._message_to_dto(row) for row in rows_list]
 
     def refresh_summary(self, thread_id: str, max_messages: int = 10) -> str:
         messages = self.list_messages(thread_id, limit=max_messages)
@@ -218,5 +336,59 @@ class ConversationService:
             role=row.role,
             content=row.content,
             citations=citations,
+            created_at=row.created_at.isoformat(),
+        )
+
+    @staticmethod
+    def _hash_password(password: str) -> str:
+        salt = os.urandom(16)
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 120_000)
+        return "pbkdf2_sha256$120000$" + base64.urlsafe_b64encode(salt).decode("ascii") + "$" + base64.urlsafe_b64encode(
+            digest
+        ).decode("ascii")
+
+    @staticmethod
+    def _verify_password(password: str, encoded: str) -> bool:
+        try:
+            algo, rounds_s, salt_b64, digest_b64 = encoded.split("$", 3)
+            if algo != "pbkdf2_sha256":
+                return False
+            rounds = int(rounds_s)
+            salt = base64.urlsafe_b64decode(salt_b64.encode("ascii"))
+            expected = base64.urlsafe_b64decode(digest_b64.encode("ascii"))
+            actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, rounds)
+            return hmac.compare_digest(actual, expected)
+        except Exception:
+            return False
+
+    def _sign_payload(self, payload: Dict[str, object]) -> str:
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        body = base64.urlsafe_b64encode(raw).decode("ascii")
+        sig = hmac.new(self.auth_secret, body.encode("ascii"), hashlib.sha256).hexdigest()
+        return f"{body}.{sig}"
+
+    def _verify_payload(self, token: str) -> Optional[Dict[str, object]]:
+        try:
+            body, sig = token.rsplit(".", 1)
+        except ValueError:
+            return None
+        expected = hmac.new(self.auth_secret, body.encode("ascii"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return None
+        try:
+            data = base64.urlsafe_b64decode(body.encode("ascii"))
+            payload = json.loads(data.decode("utf-8"))
+        except Exception:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        return payload
+
+    @staticmethod
+    def _user_to_dto(row: User) -> UserDTO:
+        return UserDTO(
+            id=row.id,
+            email=row.email,
+            is_active=bool(row.is_active),
             created_at=row.created_at.isoformat(),
         )

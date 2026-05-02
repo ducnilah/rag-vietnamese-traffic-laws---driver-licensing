@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 try:
     from fastapi import FastAPI
+    from fastapi import Depends, Header
     from fastapi import HTTPException
     from pydantic import BaseModel, Field
     FASTAPI_AVAILABLE = True
@@ -37,8 +38,11 @@ if FASTAPI_AVAILABLE:
         dense_backend: str = Field(default="auto", pattern="^(auto|chroma|jaccard)$")
 
     class ThreadCreateRequest(BaseModel):  # type: ignore[misc]
-        user_id: str
         title: str = "New chat"
+
+    class ThreadUpdateRequest(BaseModel):  # type: ignore[misc]
+        title: Optional[str] = None
+        archived: Optional[bool] = None
 
     class MessageCreateRequest(BaseModel):  # type: ignore[misc]
         role: str = Field(pattern="^(user|assistant|system)$")
@@ -54,7 +58,6 @@ if FASTAPI_AVAILABLE:
         items: List[MemoryItemRequest]
 
     class ChatRequest(BaseModel):  # type: ignore[misc]
-        user_id: str
         query: str
         mode: str = Field(default="hybrid", pattern="^(hybrid|sparse)$")
         dense_backend: str = Field(default="auto", pattern="^(auto|chroma|jaccard)$")
@@ -62,6 +65,14 @@ if FASTAPI_AVAILABLE:
         candidate_k: int = Field(default=30, ge=1, le=200)
         neighbor_window: int = Field(default=1, ge=0, le=5)
         max_context_tokens: int = Field(default=1800, ge=64, le=12000)
+
+    class RegisterRequest(BaseModel):  # type: ignore[misc]
+        email: str
+        password: str
+
+    class LoginRequest(BaseModel):  # type: ignore[misc]
+        email: str
+        password: str
 else:
     class RetrieveRequest:  # pragma: no cover
         pass
@@ -72,6 +83,9 @@ else:
     class ThreadCreateRequest:  # pragma: no cover
         pass
 
+    class ThreadUpdateRequest:  # pragma: no cover
+        pass
+
     class MessageCreateRequest:  # pragma: no cover
         pass
 
@@ -79,6 +93,12 @@ else:
         pass
 
     class ChatRequest:  # pragma: no cover
+        pass
+
+    class RegisterRequest:  # pragma: no cover
+        pass
+
+    class LoginRequest:  # pragma: no cover
         pass
 
 
@@ -94,6 +114,20 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
     if conversation:
         conversation.create_schema()
     app = FastAPI(title="Traffic RAG Retrieval API", version="0.1.0")
+
+    def require_user_id(authorization: Optional[str] = Header(default=None)) -> str:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for auth")
+        if not authorization or not authorization.lower().startswith("bearer "):
+            raise HTTPException(status_code=401, detail="missing bearer token")
+        token = authorization.split(" ", 1)[1].strip()
+        user_id = conversation.verify_access_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="invalid or expired token")
+        user = conversation.get_user(user_id)
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=401, detail="user not active")
+        return user_id
 
     @app.get("/health")
     def health() -> Dict[str, Any]:
@@ -178,57 +212,118 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
         }
 
     @app.post("/threads")
-    def create_thread(req: ThreadCreateRequest) -> Dict[str, Any]:
+    def create_thread(req: ThreadCreateRequest, user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
-        thread = conversation.create_thread(req.user_id, req.title)
+        thread = conversation.create_thread(user_id, req.title)
         return thread.__dict__
 
     @app.get("/threads")
-    def list_threads(user_id: str, limit: int = 20) -> Dict[str, Any]:
+    def list_threads(
+        limit: int = 20,
+        include_archived: bool = False,
+        user_id: str = Depends(require_user_id),
+    ) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
-        rows = conversation.list_threads(user_id, limit=limit)
+        rows = (
+            conversation.list_threads_any_status(user_id, limit=limit)
+            if include_archived
+            else conversation.list_threads(user_id, limit=limit)
+        )
         return {"threads": [row.__dict__ for row in rows]}
 
     @app.get("/threads/{thread_id}")
-    def get_thread(thread_id: str) -> Dict[str, Any]:
+    def get_thread(thread_id: str, user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
         row = conversation.get_thread(thread_id)
         if row is None:
             return {"thread": None}
+        if row.user_id != user_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         return {"thread": row.__dict__}
 
-    @app.post("/threads/{thread_id}/messages")
-    def add_message(thread_id: str, req: MessageCreateRequest) -> Dict[str, Any]:
+    @app.patch("/threads/{thread_id}")
+    def update_thread(
+        thread_id: str, req: ThreadUpdateRequest, user_id: str = Depends(require_user_id)
+    ) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        row = conversation.get_thread(thread_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if row.user_id != user_id:
+            raise HTTPException(status_code=403, detail="forbidden")
+        updated = conversation.update_thread(thread_id, title=req.title, archived=req.archived)
+        if updated is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        return {"thread": updated.__dict__}
+
+    @app.post("/threads/{thread_id}/messages")
+    def add_message(
+        thread_id: str, req: MessageCreateRequest, user_id: str = Depends(require_user_id)
+    ) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        row = conversation.get_thread(thread_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if row.user_id != user_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         msg = conversation.add_message(thread_id, req.role, req.content, req.citations)
         return msg.__dict__
 
     @app.get("/threads/{thread_id}/messages")
-    def list_messages(thread_id: str, limit: int = 50) -> Dict[str, Any]:
+    def list_messages(
+        thread_id: str,
+        limit: int = 50,
+        before_message_id: Optional[str] = None,
+        user_id: str = Depends(require_user_id),
+    ) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
-        rows = conversation.list_messages(thread_id, limit=limit)
-        return {"messages": [row.__dict__ for row in rows]}
+        row = conversation.get_thread(thread_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if row.user_id != user_id:
+            raise HTTPException(status_code=403, detail="forbidden")
+        rows = conversation.list_messages(thread_id, limit=limit, before_message_id=before_message_id)
+        next_before_message_id = rows[0].id if len(rows) == limit else None
+        return {
+            "messages": [row.__dict__ for row in rows],
+            "page": {
+                "limit": limit,
+                "returned": len(rows),
+                "next_before_message_id": next_before_message_id,
+            },
+        }
 
     @app.post("/threads/{thread_id}/summary:refresh")
-    def refresh_summary(thread_id: str) -> Dict[str, Any]:
+    def refresh_summary(thread_id: str, user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        row = conversation.get_thread(thread_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if row.user_id != user_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         summary = conversation.refresh_summary(thread_id)
         return {"thread_id": thread_id, "summary": summary}
 
     @app.get("/threads/{thread_id}/summary")
-    def get_summary(thread_id: str) -> Dict[str, Any]:
+    def get_summary(thread_id: str, user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
+        row = conversation.get_thread(thread_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        if row.user_id != user_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         return {"thread_id": thread_id, "summary": conversation.get_summary(thread_id)}
 
-    @app.patch("/users/{user_id}/memory")
-    def patch_memory(user_id: str, req: MemoryPatchRequest) -> Dict[str, Any]:
+    @app.patch("/users/me/memory")
+    def patch_memory(req: MemoryPatchRequest, user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
         for item in req.items:
@@ -240,21 +335,21 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
             )
         return {"ok": True, "items": conversation.list_memory(user_id)}
 
-    @app.get("/users/{user_id}/memory")
-    def get_memory(user_id: str) -> Dict[str, Any]:
+    @app.get("/users/me/memory")
+    def get_memory(user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
         return {"items": conversation.list_memory(user_id)}
 
     @app.post("/threads/{thread_id}/chat")
-    def chat(thread_id: str, req: ChatRequest) -> Dict[str, Any]:
+    def chat(thread_id: str, req: ChatRequest, user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
         if conversation is None:
             raise RuntimeError("sqlalchemy not installed for conversation endpoints")
 
         thread = conversation.get_thread(thread_id)
         if thread is None:
             raise HTTPException(status_code=404, detail="thread not found")
-        if thread.user_id != req.user_id:
+        if thread.user_id != user_id:
             raise HTTPException(status_code=403, detail="thread does not belong to user")
 
         guard = evaluate_query_guardrails(req.query)
@@ -315,5 +410,35 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
                 "fallback": generated.used_fallback,
             },
         }
+
+    @app.post("/auth/register")
+    def auth_register(req: RegisterRequest) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for auth endpoints")
+        try:
+            user = conversation.register_user(req.email, req.password)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        token = conversation.issue_access_token(user.id)
+        return {"access_token": token, "token_type": "bearer", "user": user.__dict__}
+
+    @app.post("/auth/login")
+    def auth_login(req: LoginRequest) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for auth endpoints")
+        user = conversation.authenticate(req.email, req.password)
+        if user is None:
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        token = conversation.issue_access_token(user.id)
+        return {"access_token": token, "token_type": "bearer", "user": user.__dict__}
+
+    @app.get("/auth/me")
+    def auth_me(user_id: str = Depends(require_user_id)) -> Dict[str, Any]:
+        if conversation is None:
+            raise RuntimeError("sqlalchemy not installed for auth endpoints")
+        user = conversation.get_user(user_id)
+        if user is None:
+            raise HTTPException(status_code=401, detail="user not found")
+        return {"user": user.__dict__}
 
     return app

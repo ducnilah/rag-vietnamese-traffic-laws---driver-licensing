@@ -23,7 +23,23 @@ Status: implemented baseline.
 5. `M5` LLM integration and guardrails: grounded generation, policy checks, OOD/hallucination controls.
 Status: implemented baseline.
 6. `M6` Evaluation harness and regression: retrieval metrics, faithfulness checks, latency tracking, regression suite.
-7. `M7` Production readiness: auth/session integration hooks, observability, migration/runbook hardening.
+7. `M7` Production readiness:
+Status: in progress.
+7.1 `Auth + Ownership` (implemented):
+- register/login/me endpoints
+- bearer token verification
+- strict thread ownership checks on all thread/message/chat endpoints
+- DB migration + seed flow for users
+7.2 `Chat Session API UX` (implemented):
+- rename/archive thread (`PATCH /threads/{thread_id}`)
+- list threads with/without archived (`include_archived`)
+- message pagination with cursor (`before_message_id`)
+- API responses shaped for chat UI consumption (`messages` + `page`)
+7.3 `Web App UX` (planned next):
+- Next.js + Tailwind app
+- login/register screens + protected routes
+- chat layout (sidebar threads + message pane)
+- resume old threads and continue chat naturally
 
 ## Locked Tech Stack
 
