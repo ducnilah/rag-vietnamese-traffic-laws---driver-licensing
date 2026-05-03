@@ -1,10 +1,12 @@
 from pathlib import Path
+import os
 from typing import Any, Dict, List, Optional
 
 try:
     from fastapi import FastAPI
     from fastapi import Depends, Header
     from fastapi import HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel, Field
     FASTAPI_AVAILABLE = True
 except ImportError:  # pragma: no cover
@@ -14,6 +16,7 @@ except ImportError:  # pragma: no cover
     Field = None  # type: ignore
     FASTAPI_AVAILABLE = False
 
+from traffic_rag.online.conversation_memory import build_conversation_context, extract_user_facts
 from traffic_rag.online.generator import ChatGenerator
 from traffic_rag.online.guardrails import evaluate_query_guardrails
 from traffic_rag.online.service import RetrievalService, has_table_intent
@@ -114,6 +117,18 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
     if conversation:
         conversation.create_schema()
     app = FastAPI(title="Traffic RAG Retrieval API", version="0.1.0")
+    cors_origins_raw = os.getenv(
+        "TRAFFIC_RAG_CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000",
+    )
+    cors_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     def require_user_id(authorization: Optional[str] = Header(default=None)) -> str:
         if conversation is None:
@@ -354,6 +369,13 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
 
         guard = evaluate_query_guardrails(req.query)
         conversation.add_message(thread_id, "user", req.query)
+        for fact in extract_user_facts(req.query):
+            conversation.upsert_memory(
+                user_id=user_id,
+                key=fact.key,
+                value=fact.value,
+                confidence=fact.confidence,
+            )
 
         if not guard.allow:
             msg = conversation.add_message(
@@ -382,7 +404,11 @@ def create_app(index_dir: Path, db_url: str = "sqlite:///data/app.db") -> "FastA
             neighbor_window=req.neighbor_window,
             max_context_tokens=req.max_context_tokens,
         )
-        generated = generator.generate(req.query, context)
+        conversation_context = build_conversation_context(
+            memory_items=conversation.list_memory(user_id),
+            recent_messages=conversation.list_messages(thread_id, limit=8),
+        )
+        generated = generator.generate(req.query, context, conversation_context=conversation_context)
 
         assistant = conversation.add_message(
             thread_id,

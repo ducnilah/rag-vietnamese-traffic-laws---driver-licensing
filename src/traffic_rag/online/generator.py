@@ -33,8 +33,9 @@ class ChatGenerator:
         ollama_base_url: str = "http://127.0.0.1:11434",
         ollama_model: str = "qwen2.5:1.5b-instruct",
         ollama_num_gpu: int = 0,
-        ollama_num_ctx: int = 1024,
+        ollama_num_ctx: int = 3072,
         ollama_num_batch: int = 32,
+        system_prompt: Optional[str] = None,
     ) -> None:
         self.provider = provider
         self.ollama_base_url = ollama_base_url
@@ -42,6 +43,16 @@ class ChatGenerator:
         self.ollama_num_gpu = ollama_num_gpu
         self.ollama_num_ctx = ollama_num_ctx
         self.ollama_num_batch = ollama_num_batch
+        self.system_prompt = system_prompt or (
+            "Bạn là Traffic Law & Driver Licensing Assistant cho Việt Nam.\n"
+            "Nhiệm vụ: trả lời câu hỏi về luật giao thông đường bộ, xử phạt vi phạm, đào tạo/sát hạch/cấp GPLX.\n"
+            "Ràng buộc:\n"
+            "- Chỉ dùng thông tin trong Context được cung cấp.\n"
+            "- Không suy diễn nếu Context không đủ; phải nói rõ chưa đủ căn cứ.\n"
+            "- Khi nêu thông tin pháp lý phải gắn tham chiếu [C1], [C2]...\n"
+            "- Luôn trả lời bằng tiếng Việt, không chèn tiếng Trung/Anh trừ khi người dùng yêu cầu.\n"
+            "- Giọng điệu ngắn gọn, rõ ràng, đúng trọng tâm."
+        )
 
     @classmethod
     def from_env(cls) -> "ChatGenerator":
@@ -49,8 +60,9 @@ class ChatGenerator:
         base_url = os.getenv("TRAFFIC_RAG_OLLAMA_BASE_URL", "http://127.0.0.1:11434").strip()
         model = os.getenv("TRAFFIC_RAG_OLLAMA_MODEL", "qwen2.5:1.5b-instruct").strip()
         num_gpu = int(os.getenv("TRAFFIC_RAG_OLLAMA_NUM_GPU", "0").strip())
-        num_ctx = int(os.getenv("TRAFFIC_RAG_OLLAMA_NUM_CTX", "1024").strip())
+        num_ctx = int(os.getenv("TRAFFIC_RAG_OLLAMA_NUM_CTX", "3072").strip())
         num_batch = int(os.getenv("TRAFFIC_RAG_OLLAMA_NUM_BATCH", "32").strip())
+        system_prompt = os.getenv("TRAFFIC_RAG_SYSTEM_PROMPT", "").strip() or None
         return cls(
             provider=provider,
             ollama_base_url=base_url,
@@ -58,11 +70,17 @@ class ChatGenerator:
             ollama_num_gpu=num_gpu,
             ollama_num_ctx=num_ctx,
             ollama_num_batch=num_batch,
+            system_prompt=system_prompt,
         )
 
-    def generate(self, query: str, context: ContextPackage) -> GenerationResult:
+    def generate(
+        self,
+        query: str,
+        context: ContextPackage,
+        conversation_context: str = "",
+    ) -> GenerationResult:
         if self.provider == "ollama":
-            out = self._generate_ollama(query, context)
+            out = self._generate_ollama(query, context, conversation_context=conversation_context)
             if out is not None:
                 return out
         return GenerationResult(
@@ -71,15 +89,23 @@ class ChatGenerator:
             used_fallback=True,
         )
 
-    def _generate_ollama(self, query: str, context: ContextPackage) -> Optional[GenerationResult]:
+    def _generate_ollama(
+        self,
+        query: str,
+        context: ContextPackage,
+        conversation_context: str = "",
+    ) -> Optional[GenerationResult]:
         prompt = (
-            "Bạn là trợ lý luật giao thông Việt Nam. "
-            "Chỉ trả lời dựa trên context được cung cấp. "
-            "Nếu thiếu dữ liệu, nói rõ chưa đủ căn cứ. "
-            "Luôn kèm tham chiếu [C1], [C2] tương ứng.\n\n"
+            f"{self.system_prompt}\n\n"
+            f"Conversation Memory (nếu có):\n{conversation_context.strip() or '(không có)'}\n\n"
             f"Question:\n{query}\n\n"
             f"Context:\n{context.context_text}\n\n"
-            "Trả lời ngắn gọn, chính xác."
+            "Yêu cầu đầu ra:\n"
+            "- Trả lời tự nhiên như trợ lý thật, xưng hô phù hợp.\n"
+            "- Nếu người dùng hỏi thông tin cá nhân đã nói trước đó (ví dụ tên/tuổi), ưu tiên dùng Conversation Memory.\n"
+            "- Với thông tin pháp lý/chuyên môn, chỉ dùng dữ kiện có trong Context và gắn tham chiếu [C#].\n"
+            "- Nếu Context không đủ căn cứ, nói rõ chưa đủ căn cứ thay vì đoán.\n"
+            "- Trả lời bằng tiếng Việt."
         )
         payload = {
             "model": self.ollama_model,

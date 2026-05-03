@@ -19,3 +19,7 @@ data/index/chunk_audit_report.txt
 __pycache__/
 *.pyc
 *.pyo
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/.next/

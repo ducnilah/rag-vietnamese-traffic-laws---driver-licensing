@@ -18,6 +18,17 @@ ALLOWED_DOMAIN_TERMS = {
     "nồng độ cồn",
     "vượt đèn đỏ",
     "biển báo",
+    "xe máy",
+    "ô tô",
+    "ngược chiều",
+    "đường một chiều",
+    "chở quá số người",
+    "csgt",
+    "luật giao thông",
+    "xử phạt",
+    "vi phạm",
+    "điểm bằng",
+    "tước bằng",
 }
 
 BLOCKED_POLICY_TERMS = {
@@ -26,6 +37,15 @@ BLOCKED_POLICY_TERMS = {
     "chạy chốt",
     "trốn phạt",
     "né phạt",
+}
+
+GREETING_TERMS = {
+    "hi",
+    "hello",
+    "xin chào",
+    "chào",
+    "alo",
+    "hey",
 }
 
 
@@ -45,21 +65,21 @@ def evaluate_query_guardrails(query: str) -> GuardrailResult:
     q = _normalize(query)
     risks: List[str] = []
 
+    # Allow lightweight greetings/small talk so UX does not feel blocked.
+    if q in GREETING_TERMS:
+        return GuardrailResult(
+            allow=True,
+            code="OK_GREETING",
+            message="ok",
+            risks=risks,
+        )
+
     if any(term in q for term in BLOCKED_POLICY_TERMS):
         risks.append("policy_violation")
         return GuardrailResult(
             allow=False,
             code="POLICY_BLOCKED",
             message="Yêu cầu liên quan hành vi vi phạm/chống đối pháp luật không được hỗ trợ.",
-            risks=risks,
-        )
-
-    if not any(term in q for term in ALLOWED_DOMAIN_TERMS):
-        risks.append("out_of_domain")
-        return GuardrailResult(
-            allow=False,
-            code="OUT_OF_DOMAIN",
-            message="Câu hỏi ngoài phạm vi trợ lý luật giao thông và sát hạch lái xe.",
             risks=risks,
         )
 
