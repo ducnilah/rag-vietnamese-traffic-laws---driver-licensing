@@ -1,0 +1,30 @@
+[project]
+name = "traffic-law-v2"
+version = "0.1.0"
+description = "Traffic law assistant v2 (LangChain + API models)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "pydantic>=2.8.0",
+  "pydantic-settings>=2.4.0",
+  "langchain>=0.3.0",
+  "langchain-community>=0.3.0",
+  "langchain-openai>=0.2.0",
+  "python-docx>=1.1.2",
+  "sqlalchemy>=2.0.0",
+  "alembic>=1.13.0",
+  "chromadb>=0.5.0",
+  "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

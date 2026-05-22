@@ -1,0 +1,50 @@
+Metadata-Version: 2.4
+Name: traffic-law-v2
+Version: 0.1.0
+Summary: Traffic law assistant v2 (LangChain + API models)
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn>=0.30.0
+Requires-Dist: pydantic>=2.8.0
+Requires-Dist: pydantic-settings>=2.4.0
+Requires-Dist: langchain>=0.3.0
+Requires-Dist: langchain-community>=0.3.0
+Requires-Dist: langchain-openai>=0.2.0
+Requires-Dist: python-docx>=1.1.2
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: alembic>=1.13.0
+Requires-Dist: chromadb>=0.5.0
+
+# Traffic Law V2
+
+LangChain-first RAG assistant for Vietnamese traffic law and driver licensing.
+
+V2 keeps the domain and product lessons from v1, but changes the engine:
+- LangChain for orchestration.
+- API LLMs and API embeddings by default.
+- Explicit citation contracts and evaluation from early milestones.
+
+## M1
+
+M1 provides:
+- project skeleton
+- env-based config
+- FastAPI app
+- `GET /api/v1/health`
+- baseline health test
+
+## Run
+
+```bash
+cp .env.example .env
+pip install -e .
+python scripts/run_api.py
+```
+
+Health:
+
+```bash
+curl http://127.0.0.1:8010/api/v1/health
+```
+
