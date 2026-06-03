@@ -32,17 +32,21 @@ Without `OPENAI_API_KEY`, the project uses deterministic hash embeddings and a f
 For real answers:
 
 ```bash
-MODEL_PROVIDER=openai
+MODEL_PROVIDER=openai_compatible
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
 OPENAI_API_KEY=...
-LLM_MODEL=gpt-4.1-mini
-EMBEDDING_MODEL=text-embedding-3-large
+LLM_MODEL=google/gemini-3.1-flash-lite
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=BAAI/bge-m3
+EMBEDDING_DEVICE=cpu
+EMBEDDING_BATCH_SIZE=4
 ```
 
 For OpenAI-compatible providers, set:
 
 ```bash
 MODEL_PROVIDER=openai_compatible
-OPENAI_BASE_URL=https://your-provider.example/v1
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
 OPENAI_API_KEY=...
 ```
 

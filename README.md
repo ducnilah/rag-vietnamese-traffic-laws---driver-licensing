@@ -21,18 +21,75 @@ Implemented end-to-end backend slice:
 - M9: minimal Next.js chat UI scaffold in `frontend/`.
 - M10: Dockerfile, compose, local runbook.
 
-## Run
+## Startup Setup
+
+V2 currently stores dev users, threads, messages, memory, and feedback in `InMemoryState`.
+PostgreSQL is configured in `.env`, but it is not required for the current web chat flow until persistent state is wired in.
+
+### One-time setup
+
+Run this once after cloning the project or recreating the environment:
 
 ```bash
+cd "/Users/m1/Documents/rag-thesis1/traffic-law-v2"
 cp .env.example .env
 /opt/homebrew/bin/python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
-python scripts/build_index.py --raw-dir data/raw --index-dir data/index
-python scripts/run_api.py
 ```
 
-Health:
+Set the model provider in `.env`. Current OpenRouter-style setup:
+
+```env
+MODEL_PROVIDER=openai_compatible
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+OPENAI_API_KEY=your_openrouter_key
+LLM_MODEL=google/gemini-3.1-flash-lite
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=BAAI/bge-m3
+EMBEDDING_DEVICE=cpu
+EMBEDDING_BATCH_SIZE=4
+```
+
+Build the RAG index once, or whenever source documents change:
+
+```bash
+cd "/Users/m1/Documents/rag-thesis1/traffic-law-v2"
+PYTHONPATH=src .venv/bin/python scripts/build_index.py --raw-dir data/raw --index-dir data/index
+```
+
+Install frontend dependencies once if `frontend/node_modules` is missing:
+
+```bash
+cd "/Users/m1/Documents/rag-thesis1/traffic-law-v2/frontend"
+/usr/local/bin/node /usr/local/lib/node_modules/npm/bin/npm-cli.js install
+```
+
+### Daily startup
+
+Start backend:
+
+```bash
+cd "/Users/m1/Documents/rag-thesis1/traffic-law-v2"
+PYTHONPATH=src .venv/bin/python scripts/run_api.py
+```
+
+Start frontend in another terminal:
+
+```bash
+cd "/Users/m1/Documents/rag-thesis1/traffic-law-v2/frontend"
+/usr/local/bin/node ./node_modules/next/dist/bin/next dev --port 3001
+```
+
+Open:
+
+```text
+http://localhost:3001
+```
+
+Use `/usr/local/bin/node` for the frontend on this Mac. Running Next with Codex's bundled Node can fail to load the native SWC compiler.
+
+### Health check
 
 ```bash
 curl http://127.0.0.1:8010/api/v1/health
@@ -54,19 +111,16 @@ python scripts/chat_smoke.py \
 
 ## Model Config
 
-Without `OPENAI_API_KEY`, local tests use hash embeddings and a fallback generator. With an API key, LangChain calls the configured provider:
-
-```env
-MODEL_PROVIDER=openai
-OPENAI_API_KEY=...
-LLM_MODEL=gpt-4.1-mini
-EMBEDDING_MODEL=text-embedding-3-large
-```
-
-OpenAI-compatible providers:
+Without `OPENAI_API_KEY`, local tests use hash embeddings and a fallback generator.
+For the current OpenRouter model flow:
 
 ```env
 MODEL_PROVIDER=openai_compatible
-OPENAI_BASE_URL=https://provider.example/v1
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
 OPENAI_API_KEY=...
+LLM_MODEL=google/gemini-3.1-flash-lite
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=BAAI/bge-m3
+EMBEDDING_DEVICE=cpu
+EMBEDDING_BATCH_SIZE=4
 ```

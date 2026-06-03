@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
             "env": settings.app_env,
             "provider": settings.model_provider,
             "llm_model": settings.llm_model,
+            "embedding_provider": settings.embedding_provider,
             "embedding_model": settings.embedding_model,
             "api_prefix": settings.api_prefix,
         }

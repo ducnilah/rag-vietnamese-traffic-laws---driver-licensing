@@ -26,18 +26,53 @@ class HashEmbedding:
         return [self.embed_query(text) for text in texts]
 
 
+class SentenceTransformerEmbedding:
+    def __init__(self, model_name: str, device: str | None = None, batch_size: int = 4) -> None:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise RuntimeError(
+                "sentence-transformers is required for local embeddings. "
+                "Install with: python -m pip install sentence-transformers torch"
+            ) from exc
+
+        kwargs = {"device": device} if device else {}
+        self.model = SentenceTransformer(model_name, **kwargs)
+        self.batch_size = batch_size
+
+    def embed_query(self, text: str) -> List[float]:
+        return self.embed_documents([text])[0]
+
+    def embed_documents(self, texts: Iterable[str]) -> List[List[float]]:
+        rows = list(texts)
+        if not rows:
+            return []
+        vectors = self.model.encode(
+            rows,
+            batch_size=self.batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+        return vectors.tolist()
+
+
 def get_embeddings(settings: Settings):
-    if settings.model_provider == "ollama":
-        # In v2 we keep local deterministic embeddings for Ollama mode so users
-        # can run fully local generation without requiring an external embedding API.
+    if settings.embedding_provider == "hash":
         return HashEmbedding()
-    if settings.model_provider in {"openai", "openai_compatible"} and settings.openai_api_key:
+    if settings.embedding_provider == "local":
+        return SentenceTransformerEmbedding(
+            settings.embedding_model,
+            device=settings.embedding_device,
+            batch_size=settings.embedding_batch_size,
+        )
+    if settings.embedding_provider in {"openai", "openai_compatible"} and settings.openai_api_key:
         from langchain_openai import OpenAIEmbeddings
 
+        base_url = settings.openai_base_url if settings.embedding_provider == "openai_compatible" else None
         return OpenAIEmbeddings(
             model=settings.embedding_model,
             api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url,
+            base_url=base_url,
         )
     return HashEmbedding()
 

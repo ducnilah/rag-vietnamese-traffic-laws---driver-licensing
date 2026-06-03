@@ -68,9 +68,11 @@ Online / serving:
 ## Locked Defaults For V2
 
 - API model path is default. No local Ollama dependency in the main flow.
-- `MODEL_PROVIDER=openai` initially.
-- `LLM_MODEL=gpt-4.1-mini` initially, adjustable by env.
-- `EMBEDDING_MODEL=text-embedding-3-large` initially, adjustable by env.
+- `MODEL_PROVIDER=openai_compatible` initially.
+- `OPENAI_BASE_URL=https://openrouter.ai/api/v1` initially.
+- `LLM_MODEL=google/gemini-3.1-flash-lite` initially, adjustable by env.
+- `EMBEDDING_PROVIDER=local` initially.
+- `EMBEDDING_MODEL=BAAI/bge-m3` initially, adjustable by env.
 - Use LangChain for prompt templates, chains, retriever composition, and output parsers.
 - Keep domain-specific legal parsing, metadata, citation formatting, table parsing, and hybrid scoring explicit.
 

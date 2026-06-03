@@ -16,8 +16,13 @@ class Settings(BaseSettings):
     model_provider: Literal["openai", "openai_compatible", "ollama", "azure_openai", "anthropic"] = Field(
         default="openai", alias="MODEL_PROVIDER"
     )
-    llm_model: str = Field(default="gpt-4.1-mini", alias="LLM_MODEL")
-    embedding_model: str = Field(default="text-embedding-3-large", alias="EMBEDDING_MODEL")
+    llm_model: str = Field(default="google/gemini-3.1-flash-lite", alias="LLM_MODEL")
+    embedding_provider: Literal["local", "openai", "openai_compatible", "hash"] = Field(
+        default="local", alias="EMBEDDING_PROVIDER"
+    )
+    embedding_model: str = Field(default="BAAI/bge-m3", alias="EMBEDDING_MODEL")
+    embedding_device: str | None = Field(default=None, alias="EMBEDDING_DEVICE")
+    embedding_batch_size: int = Field(default=4, alias="EMBEDDING_BATCH_SIZE")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
     ollama_base_url: str = Field(default="http://127.0.0.1:11434/v1", alias="OLLAMA_BASE_URL")
