@@ -137,7 +137,7 @@ export default function Home() {
     window.localStorage.removeItem(STORAGE_KEY);
   }
 
-  async function createThread(initialTitle?: string) {
+  async function createThread(initialTitle?: string, options?: { resetMessages?: boolean }) {
     if (!auth) throw new Error("Bạn cần đăng nhập trước.");
     const title = initialTitle?.trim() || "Đoạn chat mới";
     const response = await fetch(
@@ -148,7 +148,9 @@ export default function Home() {
     const data = await response.json();
     const created = data as ThreadSummary;
     setThreadId(created.id);
-    setMessages([EMPTY_ASSISTANT]);
+    if (options?.resetMessages !== false) {
+      setMessages([EMPTY_ASSISTANT]);
+    }
     await loadThreads(auth.user.id);
     return created.id;
   }
@@ -177,7 +179,7 @@ export default function Home() {
     try {
       let id = threadId;
       if (!id) {
-        id = await createThread(text.slice(0, 48));
+        id = await createThread(text.slice(0, 48), { resetMessages: false });
       }
       const response = await fetch(`${API}/threads/${id}/chat`, {
         method: "POST",

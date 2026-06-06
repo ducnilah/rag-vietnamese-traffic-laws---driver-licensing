@@ -7,12 +7,12 @@ from traffic_law_v2.config import get_settings
 from traffic_law_v2.generation import generate_answer
 from traffic_law_v2.indexing import build_index
 from traffic_law_v2.retrieval import HybridRetriever
-from traffic_law_v2.state import InMemoryState, extract_memory_facts
+from traffic_law_v2.state import create_state, extract_memory_facts
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    state = InMemoryState()
+    state = create_state(settings)
     app = FastAPI(
         title="Traffic Law V2",
         version="0.1.0",
@@ -20,7 +20,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -129,10 +129,7 @@ def create_app() -> FastAPI:
         from pathlib import Path
 
         if not state.get_thread(thread_id):
-            thread = state.create_thread(req.user_id, "Recovered chat")
-            state.threads.pop(thread.id, None)
-            thread.id = thread_id
-            state.threads[thread_id] = thread
+            state.ensure_thread(thread_id, req.user_id, "Recovered chat")
         state.add_message(thread_id, "user", req.query)
         for key, value in extract_memory_facts(req.query).items():
             state.remember(req.user_id, key, value)
